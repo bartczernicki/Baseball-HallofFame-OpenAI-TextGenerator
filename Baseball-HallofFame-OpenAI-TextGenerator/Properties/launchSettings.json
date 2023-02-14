@@ -1,0 +1,9 @@
+{
+  "profiles": {
+    "Baseball_HallofFame_OpenAI_TextGenerator": {
+      "commandName": "Project",
+      "commandLineArgs": "--port 7211",
+      "launchBrowser": false
+    }
+  }
+}
