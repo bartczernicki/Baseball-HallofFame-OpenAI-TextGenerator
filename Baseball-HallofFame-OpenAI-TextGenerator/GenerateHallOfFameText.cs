@@ -74,7 +74,7 @@ namespace Baseball_HallofFame_OpenAI_TextGenerator
                     }
                 }
 
-                var promptInstructions = string.Format("The current date is {5}. Using the provided Web search results and information in the query, write a comprehensive reply to the given query. " +
+                var promptInstructions = string.Format("The current date is {5}. Using both the provided Web search results and probability and statistics found in the given query, write a comprehensive reply to the given query. " +
                     "Make sure to cite results using [[number](URL)] notation after the reference. " +
                     "If the provided search results refer to multiple subjects with the same name, write separate answers for each subject. " +
                     "Query: An AI model states the probability of baseball hall of fame induction for {0} as {1}. {0} has played baseball for {2} years. Provide a detailed case supporting or against {0} to be considered for the Hall of Fame.\r\n",
