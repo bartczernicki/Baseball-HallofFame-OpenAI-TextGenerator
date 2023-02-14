@@ -21,5 +21,13 @@ namespace Baseball_HallofFame_OpenAI_TextGenerator
 
             return body;
         }
+
+        public static string OpenAIPromptExample = """
+        {
+        "prompt": "Once upon a time",
+        "max_tokens": 20,
+        "temperature": 0.4
+        }
+        """;
     }
 }

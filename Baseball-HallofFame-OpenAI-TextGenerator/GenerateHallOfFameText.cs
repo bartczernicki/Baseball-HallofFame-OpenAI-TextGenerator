@@ -8,6 +8,8 @@ using Microsoft.Bing.WebSearch;
 using Microsoft.Bing.WebSearch.Models;
 using Grpc.Net.Client.Configuration;
 using System.Globalization;
+using System;
+using System.Net.Http.Headers;
 
 namespace Baseball_HallofFame_OpenAI_TextGenerator
 {
@@ -49,7 +51,7 @@ namespace Baseball_HallofFame_OpenAI_TextGenerator
                 var mlbBatterInfo = JsonSerializer.Deserialize<MLBBatterInfo>(requestBodyString);
                 _logger.LogInformation("GenerateHallOfFameText - MLBBatterInfo Deserialized");
 
-                // Bing Search
+                // Bing - Web Search Components
                 var searchString = string.Format("{0} baseball Hall of Fame", mlbBatterInfo?.FullPlayerName);
                 var bingSearchKey = System.Environment.GetEnvironmentVariable("BING_SEARCH_KEY");
 
@@ -74,6 +76,7 @@ namespace Baseball_HallofFame_OpenAI_TextGenerator
                     }
                 }
 
+                // OpenAI - Text Generator Components
                 var promptInstructions = string.Format("The current date is {5}. Using both the provided Web search results and probability and statistics found in the given query, write a comprehensive reply to the given query. " +
                     "Make sure to cite results using [[number](URL)] notation after the reference. " +
                     "If the provided search results refer to multiple subjects with the same name, write separate answers for each subject. " +
@@ -81,9 +84,40 @@ namespace Baseball_HallofFame_OpenAI_TextGenerator
                     mlbBatterInfo?.FullPlayerName, mlbBatterInfo?.HallOfFameProbability.ToString("P", CultureInfo.InvariantCulture), mlbBatterInfo?.YearsPlayed,
                     mlbBatterInfo?.HR, mlbBatterInfo?.TotalPlayerAwards, DateTime.Now.ToString("M/d/yyyy"));
 
+                var azureOpenAIKey = System.Environment.GetEnvironmentVariable("AZURE_OPENAI_KEY");
+                using var client = new HttpClient();
+                client.BaseAddress = new Uri("https://openaiappliedai.openai.azure.com/openai/deployments/text-davinci-003-demo/completions?api-version=2022-12-01");
+                client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));//ACCEPT header
+                client.DefaultRequestHeaders.Add("api-key", azureOpenAIKey);
+
+                // OpenAI - Body
+                var resultsAndInstructions = webSearchResults + promptInstructions;
+                // Calculate the max tokens for the OpenAI API
+                var resultsAndInstructionsLength = resultsAndInstructions.Length;
+                var resultsAndInstructionsTokensEstimate = resultsAndInstructionsLength / 4;
+                int maxTokens = Convert.ToInt32(resultsAndInstructionsTokensEstimate * 1.5);
+
+                var openAICompletions = new OpenAICompletions()
+                {
+                    prompt = resultsAndInstructions,
+                    max_tokens = maxTokens,
+                    temperature = 0.3f,
+                    top_p = 1,
+                    frequency_penalty = 0.1f,
+                    presence_penalty = 0.1f,
+                    stop = string.Empty
+                };
+                var openAICompletionsJsonString = JsonSerializer.Serialize(openAICompletions);
+                var openAIRequestBody = new StringContent(openAICompletionsJsonString, Encoding.UTF8, "application/json");
+                var opeanAIResponse = await client.PostAsync(client.BaseAddress, openAIRequestBody);
+                var openAICompletionResponseBody = await opeanAIResponse.Content.ReadAsStringAsync();
+                var openAICompletionResponse = JsonSerializer.Deserialize<OpenAICompletionsResponse>(openAICompletionResponseBody);
+
+                var openAICompletionResponseGeneratedText = openAICompletionResponse?.choices[0].text;
+
                 // Successful response (OK)
                 response.StatusCode = HttpStatusCode.OK;
-                response.WriteString(webSearchResults + promptInstructions + footNotes);
+                response.WriteString(openAICompletionResponseGeneratedText + "\r\n" + footNotes);
             }
 
             _logger.LogInformation("GenerateHallOfFameText - End");
