@@ -101,10 +101,10 @@ namespace Baseball_HallofFame_OpenAI_TextGenerator
                 {
                     prompt = resultsAndInstructions,
                     max_tokens = maxTokens,
-                    temperature = 0.3f,
+                    temperature = 0.4f,
                     top_p = 1,
-                    frequency_penalty = 0.1f,
-                    presence_penalty = 0.1f,
+                    frequency_penalty = 0.15f,
+                    presence_penalty = 0.15f,
                     stop = string.Empty
                 };
                 var openAICompletionsJsonString = JsonSerializer.Serialize(openAICompletions);
