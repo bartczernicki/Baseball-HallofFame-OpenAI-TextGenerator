@@ -56,7 +56,8 @@ namespace Baseball_HallofFame_OpenAI_TextGenerator
                 var bingSearchClient = new WebSearchClient(new ApiKeyServiceClientCredentials(bingSearchKey));
                 var bingWebData = await bingSearchClient.Web.SearchAsync(query: searchString, count: 8);
 
-                string webSearchResults = "Web search results:\r\n\r\n";
+                var webSearchResults = "Web search results:\r\n\r\n";
+                var footNotes = string.Empty;
                 var bingSearchId = 0;
                 if (bingWebData?.WebPages?.Value?.Count > 0)
                 {
@@ -64,21 +65,25 @@ namespace Baseball_HallofFame_OpenAI_TextGenerator
                     foreach(var bingWebPage in bingWebData.WebPages.Value)
                     {
                         bingSearchId++;
+
                         webSearchResults += string.Format("[{0}] \"{1}. {2}\"\r\nURL: {3}\r\n\r\n", 
                             bingSearchId, bingWebPage.Name, bingWebPage.Snippet, bingWebPage.Url);
+
+                        footNotes += string.Format("{0}. {1}: {2}\r\n",
+                            bingSearchId, bingWebPage.Name, bingWebPage.Url);
                     }
                 }
 
-                var promptInstructions = string.Format("Using the provided Web search results and information in the query, write a comprehensive reply to the given query. " +
+                var promptInstructions = string.Format("The current date is {5}. Using the provided Web search results and information in the query, write a comprehensive reply to the given query. " +
                     "Make sure to cite results using [[number](URL)] notation after the reference. " +
                     "If the provided search results refer to multiple subjects with the same name, write separate answers for each subject. " +
-                    "Query: An AI model states the probability of baseball hall of fame induction for {0} as {1}. {0} has played baseball for {2} years. Provide a detailed case supporting or against {0} to be considered for the Hall of Fame.",
+                    "Query: An AI model states the probability of baseball hall of fame induction for {0} as {1}. {0} has played baseball for {2} years. Provide a detailed case supporting or against {0} to be considered for the Hall of Fame.\r\n",
                     mlbBatterInfo?.FullPlayerName, mlbBatterInfo?.HallOfFameProbability.ToString("P", CultureInfo.InvariantCulture), mlbBatterInfo?.YearsPlayed,
-                    mlbBatterInfo?.HR, mlbBatterInfo?.TotalPlayerAwards);
+                    mlbBatterInfo?.HR, mlbBatterInfo?.TotalPlayerAwards, DateTime.Now.ToString("M/d/yyyy"));
 
                 // Successful response (OK)
                 response.StatusCode = HttpStatusCode.OK;
-                response.WriteString(webSearchResults + promptInstructions);
+                response.WriteString(webSearchResults + promptInstructions + footNotes);
             }
 
             _logger.LogInformation("GenerateHallOfFameText - End");
