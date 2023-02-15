@@ -29,6 +29,7 @@ namespace Baseball_HallofFame_OpenAI_TextGenerator
         public int created { get; set; }
         public string model { get; set; } = string.Empty;
         public List<OpenAICompletionsResponseChoice> choices { get; set; } = new List<OpenAICompletionsResponseChoice>();
+        public OpenAICompletionsResponseUsage usage { get; set; } = new OpenAICompletionsResponseUsage();
     }
 }
 

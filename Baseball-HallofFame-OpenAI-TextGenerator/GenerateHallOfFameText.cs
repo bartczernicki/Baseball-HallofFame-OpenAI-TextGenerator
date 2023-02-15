@@ -56,7 +56,7 @@ namespace Baseball_HallofFame_OpenAI_TextGenerator
                 var bingSearchKey = System.Environment.GetEnvironmentVariable("BING_SEARCH_KEY");
 
                 var bingSearchClient = new WebSearchClient(new ApiKeyServiceClientCredentials(bingSearchKey));
-                var bingWebData = await bingSearchClient.Web.SearchAsync(query: searchString, count: 8);
+                var bingWebData = await bingSearchClient.Web.SearchAsync(query: searchString, count: 10);
 
                 var webSearchResults = "Web search results:\r\n\r\n";
                 var footNotes = string.Empty;
@@ -85,8 +85,10 @@ namespace Baseball_HallofFame_OpenAI_TextGenerator
                     mlbBatterInfo?.HR, mlbBatterInfo?.TotalPlayerAwards, DateTime.Now.ToString("M/d/yyyy"));
 
                 var azureOpenAIKey = System.Environment.GetEnvironmentVariable("AZURE_OPENAI_KEY");
+                var azureOpenAIDeployment = System.Environment.GetEnvironmentVariable("AZURE_OPENAI_DEPLOYMENT");
+
                 using var client = new HttpClient();
-                client.BaseAddress = new Uri("https://openaiappliedai.openai.azure.com/openai/deployments/text-davinci-003-demo/completions?api-version=2022-12-01");
+                client.BaseAddress = new Uri(string.Format("https://{0}.openai.azure.com/openai/deployments/text-davinci-003-demo/completions?api-version=2022-12-01", azureOpenAIDeployment));
                 client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));//ACCEPT header
                 client.DefaultRequestHeaders.Add("api-key", azureOpenAIKey);
 
@@ -95,14 +97,15 @@ namespace Baseball_HallofFame_OpenAI_TextGenerator
                 // Calculate the max tokens for the OpenAI API
                 var resultsAndInstructionsLength = resultsAndInstructions.Length;
                 var resultsAndInstructionsTokensEstimate = resultsAndInstructionsLength / 4;
-                int maxTokens = Convert.ToInt32(resultsAndInstructionsTokensEstimate * 1.5);
+                int maxTokens = Convert.ToInt32(resultsAndInstructionsTokensEstimate * 1.5) > 2000 ? 2000 : Convert.ToInt32(resultsAndInstructionsTokensEstimate * 1.5);
 
+                // OpenAI - Completions Settings
                 var openAICompletions = new OpenAICompletions()
                 {
                     prompt = resultsAndInstructions,
                     max_tokens = maxTokens,
                     temperature = 0.4f,
-                    top_p = 1,
+                    top_p = 0.85f,
                     frequency_penalty = 0.15f,
                     presence_penalty = 0.15f,
                     stop = string.Empty
@@ -113,11 +116,12 @@ namespace Baseball_HallofFame_OpenAI_TextGenerator
                 var openAICompletionResponseBody = await opeanAIResponse.Content.ReadAsStringAsync();
                 var openAICompletionResponse = JsonSerializer.Deserialize<OpenAICompletionsResponse>(openAICompletionResponseBody);
 
-                var openAICompletionResponseGeneratedText = openAICompletionResponse?.choices[0].text;
+                var openAICompletionResponseGeneratedText = openAICompletionResponse?.choices[0].text.Trim();
+                _logger.LogInformation("GenerateHallOfFameText - OpenAI Text: " + openAICompletionResponseGeneratedText);
 
                 // Successful response (OK)
                 response.StatusCode = HttpStatusCode.OK;
-                response.WriteString(openAICompletionResponseGeneratedText + "\r\n" + footNotes);
+                response.WriteString(openAICompletionResponseGeneratedText + "\r\n\r\n" + footNotes);
             }
 
             _logger.LogInformation("GenerateHallOfFameText - End");
