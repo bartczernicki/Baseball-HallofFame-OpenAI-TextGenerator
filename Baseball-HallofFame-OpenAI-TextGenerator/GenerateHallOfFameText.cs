@@ -32,7 +32,7 @@ namespace Baseball_HallofFame_OpenAI_TextGenerator
             {
                 response.StatusCode = HttpStatusCode.OK;
                 response.Headers.Add("Content-Type", "text/plain; charset=utf-8");
-                response.WriteString("API is working");
+                response.WriteString("Generate Hall of Fame API is working");
             }
             else // POST
             {
@@ -84,6 +84,7 @@ namespace Baseball_HallofFame_OpenAI_TextGenerator
                     mlbBatterInfo?.FullPlayerName, mlbBatterInfo?.HallOfFameProbability.ToString("P", CultureInfo.InvariantCulture), mlbBatterInfo?.YearsPlayed,
                     mlbBatterInfo?.HR, mlbBatterInfo?.TotalPlayerAwards, DateTime.Now.ToString("M/d/yyyy"));
 
+                // OpenAI - Retrieve Keys
                 var azureOpenAIKey = System.Environment.GetEnvironmentVariable("AZURE_OPENAI_KEY");
                 var azureOpenAIDeployment = System.Environment.GetEnvironmentVariable("AZURE_OPENAI_DEPLOYMENT");
 
