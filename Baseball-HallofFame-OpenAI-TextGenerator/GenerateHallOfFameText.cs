@@ -94,7 +94,7 @@ namespace Baseball_HallofFame_OpenAI_TextGenerator
 
                 // OpenAI - Body
                 var resultsAndInstructions = webSearchResults + promptInstructions;
-                // Calculate the max tokens for the OpenAI API
+                // OpenAI - Calculate the max tokens
                 var resultsAndInstructionsLength = resultsAndInstructions.Length;
                 var resultsAndInstructionsTokensEstimate = resultsAndInstructionsLength / 4;
                 int maxTokens = Convert.ToInt32(resultsAndInstructionsTokensEstimate * 1.5) > 2000 ? 2000 : Convert.ToInt32(resultsAndInstructionsTokensEstimate * 1.5);
@@ -111,6 +111,8 @@ namespace Baseball_HallofFame_OpenAI_TextGenerator
                     stop = string.Empty
                 };
                 var openAICompletionsJsonString = JsonSerializer.Serialize(openAICompletions);
+
+                // OpenAI - Post Request
                 var openAIRequestBody = new StringContent(openAICompletionsJsonString, Encoding.UTF8, "application/json");
                 var opeanAIResponse = await client.PostAsync(client.BaseAddress, openAIRequestBody);
                 var openAICompletionResponseBody = await opeanAIResponse.Content.ReadAsStringAsync();
