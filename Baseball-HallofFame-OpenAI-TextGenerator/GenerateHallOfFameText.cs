@@ -68,17 +68,17 @@ namespace Baseball_HallofFame_OpenAI_TextGenerator
                     {
                         bingSearchId++;
 
-                        webSearchResults += string.Format("[{0}] \"{1}. {2}\"\r\nURL: {3}\r\n\r\n", 
+                        webSearchResults += string.Format("[^{0}]: \"{1}: {2}\"\r\nURL: {3}\r\n\r\n", 
                             bingSearchId, bingWebPage.Name, bingWebPage.Snippet, bingWebPage.Url);
 
-                        footNotes += string.Format("{0}. {1}: {2}\r\n",
+                        footNotes += string.Format("[^{0}]: {1}: {2}  \r\n",
                             bingSearchId, bingWebPage.Name, bingWebPage.Url);
                     }
                 }
 
                 // OpenAI - Text Generator Components
                 var promptInstructions = string.Format("The current date is {5}. Using both the provided Web search results and probability and statistics found in the given query, write a comprehensive reply to the given query. " +
-                    "Make sure to cite results using [[number](URL)] notation after the reference. " +
+                    "Make sure to cite results using [^number] notation of each URL after the reference. " +
                     "If the provided search results refer to multiple subjects with the same name, write separate answers for each subject. " +
                     "Query: An AI model states the probability of baseball hall of fame induction for {0} as {1}. {0} has played baseball for {2} years. Provide a detailed case supporting or against {0} to be considered for the Hall of Fame.\r\n",
                     mlbBatterInfo?.FullPlayerName, mlbBatterInfo?.HallOfFameProbability.ToString("P", CultureInfo.InvariantCulture), mlbBatterInfo?.YearsPlayed,
@@ -98,7 +98,7 @@ namespace Baseball_HallofFame_OpenAI_TextGenerator
                 // OpenAI - Calculate the max tokens
                 var resultsAndInstructionsLength = resultsAndInstructions.Length;
                 var resultsAndInstructionsTokensEstimate = resultsAndInstructionsLength / 4;
-                int maxTokens = Convert.ToInt32(resultsAndInstructionsTokensEstimate * 1.5) > 2000 ? 2000 : Convert.ToInt32(resultsAndInstructionsTokensEstimate * 1.5);
+                int maxTokens = Convert.ToInt32(resultsAndInstructionsTokensEstimate * 1.6) > 2000 ? 2000 : Convert.ToInt32(resultsAndInstructionsTokensEstimate * 1.6);
 
                 // OpenAI - Completions Settings
                 var openAICompletions = new OpenAICompletions()

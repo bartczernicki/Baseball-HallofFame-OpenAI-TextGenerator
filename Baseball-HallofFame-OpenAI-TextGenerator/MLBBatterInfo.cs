@@ -17,5 +17,7 @@ namespace Baseball_HallofFame_OpenAI_TextGenerator
         public float TotalPlayerAwards { get; set; }
 
         public float HallOfFameProbability { get; set; }
+
+        public bool ReturnResponseAsMarkdown { get; set; } = true;
     }
 }
