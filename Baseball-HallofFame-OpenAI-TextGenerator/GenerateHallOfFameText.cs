@@ -105,7 +105,7 @@ namespace Baseball_HallofFame_OpenAI_TextGenerator
                 {
                     prompt = resultsAndInstructions,
                     max_tokens = maxTokens,
-                    temperature = 0.36f,
+                    temperature = 0.24f,
                     top_p = 0.86f,
                     frequency_penalty = 0.14f,
                     presence_penalty = 0.14f,
