@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Baseball_HallofFame_OpenAI_TextGenerator
+namespace Baseball_HallofFame_OpenAI_TextGenerator.Shared
 {
     public class OpenAICompletions
     {

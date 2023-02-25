@@ -1,4 +1,4 @@
-﻿namespace Baseball_HallofFame_OpenAI_TextGenerator
+﻿namespace Baseball_HallofFame_OpenAI_TextGenerator.Shared
 {
     public class OpenAICompletionsResponseChoice
     {
