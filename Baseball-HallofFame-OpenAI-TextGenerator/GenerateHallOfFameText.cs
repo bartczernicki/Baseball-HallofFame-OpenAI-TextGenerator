@@ -54,28 +54,64 @@ namespace Baseball_HallofFame_OpenAI_TextGenerator
 
                 // Bing - Web Search Components
                 var searchString = string.Format("{0} baseball Hall of Fame", mlbBatterInfo?.FullPlayerName);
-                var bingSearchKey = System.Environment.GetEnvironmentVariable("BING_SEARCH_KEY");
-
-                var bingSearchClient = new WebSearchClient(new ApiKeyServiceClientCredentials(bingSearchKey));
-                var bingWebData = await bingSearchClient.Web.SearchAsync(query: searchString, count: 10);
-
-                var webSearchResults = "Web search results:\r\n\r\n";
+                var webSearchResultsString = "Web search results:\r\n\r\n";
                 var footNotes = string.Empty;
                 var bingSearchId = 0;
-                if (bingWebData?.WebPages?.Value?.Count > 0)
-                {
-                    // Itertate over the Bing Web Pages
-                    foreach(var bingWebPage in bingWebData.WebPages.Value)
-                    {
-                        bingSearchId++;
 
-                        webSearchResults += string.Format("[{0}]: \"{1}: {2}\"\r\nURL: {3}\r\n\r\n", 
+                // Cache - Initialize Cache (Redis) & Check Cache
+                var redisCache = new Cache.Redis();
+                var webSearchResults = redisCache.GetWebSearchResults(mlbBatterInfo, searchString);
+
+                if(webSearchResults.Count> 0)
+                {
+                    _logger.LogInformation("GenerateHallOfFameText - MLBBatterInfo found in Cache");
+
+                    // Itertate over the Bing Web Pages (Cache)
+                    foreach (var bingWebPage in webSearchResults)
+                    {
+                        webSearchResultsString += string.Format("[{0}]: \"{1}: {2}\"\r\nURL: {3}\r\n\r\n",
                             bingSearchId, bingWebPage.Name, bingWebPage.Snippet, bingWebPage.Url);
 
                         footNotes += string.Format("[{0}]: {1}: {2}  \r\n",
                             bingSearchId, bingWebPage.Name, bingWebPage.Url);
                     }
                 }
+                else
+                {
+                    _logger.LogInformation("GenerateHallOfFameText - MLBBatterInfo NOT FOUND in Cache");
+
+                    var bingSearchKey = System.Environment.GetEnvironmentVariable("BING_SEARCH_KEY");
+                    var bingSearchClient = new WebSearchClient(new ApiKeyServiceClientCredentials(bingSearchKey));
+                    var bingWebData = await bingSearchClient.Web.SearchAsync(query: searchString, count: 10);
+
+
+                    if (bingWebData?.WebPages?.Value?.Count > 0)
+                    {
+                        // Itertate over the Bing Web Pages (Non-Cache Results)
+                        foreach (var bingWebPage in bingWebData.WebPages.Value)
+                        {
+                            bingSearchId++;
+
+                            webSearchResultsString += string.Format("[{0}]: \"{1}: {2}\"\r\nURL: {3}\r\n\r\n",
+                                bingSearchId, bingWebPage.Name, bingWebPage.Snippet, bingWebPage.Url);
+
+                            footNotes += string.Format("[{0}]: {1}: {2}  \r\n",
+                                bingSearchId, bingWebPage.Name, bingWebPage.Url);
+
+                            webSearchResults.Add(new WebSearchResult
+                            {
+                                Id = bingSearchId,
+                                Name = bingWebPage.Name,
+                                Snippet = bingWebPage.Snippet,
+                                Url = bingWebPage.Url
+                            });
+                        }
+
+                        // Add to Cache
+                        redisCache.AddMLBBatterWebSearchResults(mlbBatterInfo, searchString, webSearchResults);
+                    }
+                }
+
 
                 // OpenAI - Text Generator Components
                 var promptInstructions = string.Format("The current date is {5}. Using most of the provided Web search results and probability and statistics found in the given query, write a comprehensive reply to the given query. " +
@@ -95,7 +131,7 @@ namespace Baseball_HallofFame_OpenAI_TextGenerator
                 client.DefaultRequestHeaders.Add("api-key", azureOpenAIKey);
 
                 // OpenAI - Body
-                var resultsAndInstructions = webSearchResults + promptInstructions;
+                var resultsAndInstructions = webSearchResultsString + promptInstructions;
                 // OpenAI - Calculate the max tokens
                 var resultsAndInstructionsLength = resultsAndInstructions.Length;
                 var resultsAndInstructionsTokensEstimate = resultsAndInstructionsLength / 4;

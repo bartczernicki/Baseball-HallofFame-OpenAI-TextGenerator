@@ -19,5 +19,10 @@ namespace Baseball_HallofFame_OpenAI_TextGenerator
         public float HallOfFameProbability { get; set; }
 
         public bool ReturnResponseAsMarkdown { get; set; } = true;
+
+        public override string ToString()
+        {
+            return (FullPlayerName + "-" + YearsPlayed + "-" + HR + "-" + TotalPlayerAwards.ToString() + "-" + HallOfFameProbability.ToString()).ToString();
+        }
     }
 }
