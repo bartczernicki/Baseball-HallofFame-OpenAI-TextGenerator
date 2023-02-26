@@ -22,14 +22,6 @@ namespace Baseball_HallofFame_OpenAI_TextGenerator
             return body;
         }
 
-        public static string OpenAIPromptExample = """
-        {
-        "prompt": "Once upon a time",
-        "max_tokens": 20,
-        "temperature": 0.4
-        }
-        """;
-
         public static int GetSequenceHashCode<T>(this IList<T> sequence)
         {
             const int seed = 100;
@@ -41,7 +33,6 @@ namespace Baseball_HallofFame_OpenAI_TextGenerator
                     (current * modifier) + item.GetHashCode());
             }
         }
-
 
         public static int GetDeterministicHashCode(this string str)
         {
@@ -62,5 +53,29 @@ namespace Baseball_HallofFame_OpenAI_TextGenerator
             }
         }
 
+        // String literal test
+        public static string OpenAIPromptExample = """
+        {
+        "prompt": "Once upon a time",
+        "max_tokens": 20,
+        "temperature": 0.4
+        }
+        """;
+
+        public static bool UseRedisCache(bool isConnected)
+        {
+            var percentageToUseRedis = 75;
+            var randomSeed = DateTime.Now.Millisecond;
+            var random = new Random(randomSeed).Next(0, 100);
+
+            if ((random <= percentageToUseRedis) && (isConnected))
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }
     }
 }

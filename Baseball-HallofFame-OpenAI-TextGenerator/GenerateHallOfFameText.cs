@@ -49,48 +49,48 @@ namespace Baseball_HallofFame_OpenAI_TextGenerator
                     return response;
                 }
 
-                var mlbBatterInfo = JsonSerializer.Deserialize<MLBBatterInfo>(requestBodyString);
+                var mlbBatterInfo = JsonSerializer.Deserialize<MLBBatterInfo>(requestBodyString) ?? new MLBBatterInfo();
                 _logger.LogInformation("GenerateHallOfFameText - MLBBatterInfo Deserialized");
-
-                // Bing - Web Search Components
-                var searchString = string.Format("{0} baseball Hall of Fame", mlbBatterInfo?.FullPlayerName);
-                var webSearchResultsString = "Web search results:\r\n\r\n";
-                var footNotes = string.Empty;
-                var bingSearchId = 0;
 
                 // Cache - Initialize Cache (Redis) & Check Cache
                 var redisCache = new Cache.Redis();
-                var webSearchResults = redisCache.GetWebSearchResults(mlbBatterInfo, searchString);
 
-                if(webSearchResults.Count> 0)
+                var narratives = new List<NarrativeResult>();
+                // Cache - Determine if should pull from cache
+                if (Util.UseRedisCache(redisCache.IsRedisConnected))
                 {
-                    _logger.LogInformation("GenerateHallOfFameText - MLBBatterInfo found in Cache");
+                    _logger.LogInformation("GenerateHallOfFameText - Random selection attempting Cache");
+                    narratives = redisCache.GetNarratives(mlbBatterInfo);
+                }
 
-                    // Itertate over the Bing Web Pages (Cache)
-                    foreach (var bingWebPage in webSearchResults)
-                    {
-                        bingSearchId++;
+                // Cache - Return the Narrative from Cache
+                if (narratives.Count > 0)
+                {
+                    var random = new Random(DateTime.Now.Second).Next(0, narratives.Count - 1);
+                    var selectedNarrative = narratives[random].Text;
+                    _logger.LogInformation("GenerateHallOfFameText - MLBBatterInfo - Narrative FOUND in Cache");
 
-                        webSearchResultsString += string.Format("[{0}]: \"{1}: {2}\"\r\nURL: {3}\r\n\r\n",
-                            bingSearchId, bingWebPage.Name, bingWebPage.Snippet, bingWebPage.Url);
-
-                        footNotes += string.Format("[{0}]: {1}: {2}  \r\n",
-                            bingSearchId, bingWebPage.Name, bingWebPage.Url);
-                    }
+                    // Successful response (OK)
+                    response.StatusCode = HttpStatusCode.OK;
+                    response.WriteString(selectedNarrative);
                 }
                 else
-                {
-                    _logger.LogInformation("GenerateHallOfFameText - MLBBatterInfo NOT FOUND in Cache");
+                {   // ELSE PROCESS either BING and/or OPENAI
 
-                    var bingSearchKey = System.Environment.GetEnvironmentVariable("BING_SEARCH_KEY");
-                    var bingSearchClient = new WebSearchClient(new ApiKeyServiceClientCredentials(bingSearchKey));
-                    var bingWebData = await bingSearchClient.Web.SearchAsync(query: searchString, count: 10);
+                    // Bing - Web Search Components
+                    var searchString = string.Format("{0} baseball Hall of Fame", mlbBatterInfo?.FullPlayerName);
+                    var webSearchResultsString = "Web search results:\r\n\r\n";
+                    var footNotes = string.Empty;
+                    var bingSearchId = 0;
 
+                    var webSearchResults = redisCache.GetWebSearchResults(mlbBatterInfo, searchString);
 
-                    if (bingWebData?.WebPages?.Value?.Count > 0)
+                    if (webSearchResults.Count > 0)
                     {
-                        // Itertate over the Bing Web Pages (Non-Cache Results)
-                        foreach (var bingWebPage in bingWebData.WebPages.Value)
+                        _logger.LogInformation("GenerateHallOfFameText - MLBBatterInfo - WebSearchResults FOUND in Cache");
+
+                        // Itertate over the Bing Web Pages (Cache)
+                        foreach (var bingWebPage in webSearchResults)
                         {
                             bingSearchId++;
 
@@ -99,71 +99,99 @@ namespace Baseball_HallofFame_OpenAI_TextGenerator
 
                             footNotes += string.Format("[{0}]: {1}: {2}  \r\n",
                                 bingSearchId, bingWebPage.Name, bingWebPage.Url);
-
-                            webSearchResults.Add(new WebSearchResult
-                            {
-                                Id = bingSearchId,
-                                Name = bingWebPage.Name,
-                                Snippet = bingWebPage.Snippet,
-                                Url = bingWebPage.Url
-                            });
                         }
-
-                        // Add to Cache
-                        redisCache.AddMLBBatterWebSearchResults(mlbBatterInfo, searchString, webSearchResults);
                     }
-                }
+                    else
+                    {
+                        _logger.LogInformation("GenerateHallOfFameText - MLBBatterInfo - WebSearchResults NOT FOUND in Cache");
+
+                        var bingSearchKey = System.Environment.GetEnvironmentVariable("BING_SEARCH_KEY");
+                        var bingSearchClient = new WebSearchClient(new ApiKeyServiceClientCredentials(bingSearchKey));
+                        var bingWebData = await bingSearchClient.Web.SearchAsync(query: searchString, count: 8);
 
 
-                // OpenAI - Text Generator Components
-                var promptInstructions = string.Format("The current date is {5}. Using most of the provided Web search results and probability and statistics found in the given query, write a comprehensive reply to the given query. " +
-                    "Make sure to cite results using [number] notation of each URL after the reference. " +
-                    "If the provided search results refer to multiple subjects with the same name, write separate answers for each subject. " +
-                    "Query: An AI model states the probability of baseball hall of fame induction for {0} as {1}. {0} has played baseball for {2} years. Provide a detailed case supporting or against {0} to be considered for the Hall of Fame.\r\n",
-                    mlbBatterInfo?.FullPlayerName, mlbBatterInfo?.HallOfFameProbability.ToString("P", CultureInfo.InvariantCulture), mlbBatterInfo?.YearsPlayed,
-                    mlbBatterInfo?.HR, mlbBatterInfo?.TotalPlayerAwards, DateTime.Now.ToString("M/d/yyyy"));
+                        if (bingWebData?.WebPages?.Value?.Count > 0)
+                        {
+                            // Itertate over the Bing Web Pages (Non-Cache Results)
+                            foreach (var bingWebPage in bingWebData.WebPages.Value)
+                            {
+                                bingSearchId++;
 
-                // OpenAI - Retrieve Keys
-                var azureOpenAIKey = System.Environment.GetEnvironmentVariable("AZURE_OPENAI_KEY");
-                var azureOpenAIDeployment = System.Environment.GetEnvironmentVariable("AZURE_OPENAI_DEPLOYMENT");
+                                webSearchResultsString += string.Format("[{0}]: \"{1}: {2}\"\r\nURL: {3}\r\n\r\n",
+                                    bingSearchId, bingWebPage.Name, bingWebPage.Snippet, bingWebPage.Url);
 
-                using var client = new HttpClient();
-                client.BaseAddress = new Uri(string.Format("https://{0}.openai.azure.com/openai/deployments/text-davinci-003-demo/completions?api-version=2022-12-01", azureOpenAIDeployment));
-                client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));//ACCEPT header
-                client.DefaultRequestHeaders.Add("api-key", azureOpenAIKey);
+                                footNotes += string.Format("[{0}]: {1}: {2}  \r\n",
+                                    bingSearchId, bingWebPage.Name, bingWebPage.Url);
 
-                // OpenAI - Body
-                var resultsAndInstructions = webSearchResultsString + promptInstructions;
-                // OpenAI - Calculate the max tokens
-                var resultsAndInstructionsLength = resultsAndInstructions.Length;
-                var resultsAndInstructionsTokensEstimate = resultsAndInstructionsLength / 4;
-                int maxTokens = Convert.ToInt32(resultsAndInstructionsTokensEstimate * 1.6) > 2000 ? 2000 : Convert.ToInt32(resultsAndInstructionsTokensEstimate * 1.6);
+                                webSearchResults.Add(new WebSearchResult
+                                {
+                                    Id = bingSearchId,
+                                    Name = bingWebPage.Name,
+                                    Snippet = bingWebPage.Snippet,
+                                    Url = bingWebPage.Url
+                                });
+                            }
 
-                // OpenAI - Completions Settings
-                var openAICompletions = new OpenAICompletions()
-                {
-                    prompt = resultsAndInstructions,
-                    max_tokens = maxTokens,
-                    temperature = 0.24f,
-                    top_p = 0.86f,
-                    frequency_penalty = 0.14f,
-                    presence_penalty = 0.14f,
-                    stop = string.Empty
-                };
-                var openAICompletionsJsonString = JsonSerializer.Serialize(openAICompletions);
+                            // Add to Cache - WebSearchResults
+                            redisCache.AddWebSearchResults(mlbBatterInfo, searchString, webSearchResults);
+                        }
+                    }
 
-                // OpenAI - Post Request
-                var openAIRequestBody = new StringContent(openAICompletionsJsonString, Encoding.UTF8, "application/json");
-                var opeanAIResponse = await client.PostAsync(client.BaseAddress, openAIRequestBody);
-                var openAICompletionResponseBody = await opeanAIResponse.Content.ReadAsStringAsync();
-                var openAICompletionResponse = JsonSerializer.Deserialize<OpenAICompletionsResponse>(openAICompletionResponseBody);
 
-                var openAICompletionResponseGeneratedText = openAICompletionResponse?.choices[0].text.Trim();
-                _logger.LogInformation("GenerateHallOfFameText - OpenAI Text: " + openAICompletionResponseGeneratedText);
+                    // OpenAI - Text Generator Components
+                    var promptInstructions = string.Format("The current date is {5}. Using most of the provided Web search results and probability and statistics found in the given query, write a comprehensive reply to the given query. " +
+                        "Make sure to cite results using [number] notation of each URL after the reference. " +
+                        "If the provided search results refer to multiple subjects with the same name, write separate answers for each subject. " +
+                        "Query: An AI model states the probability of baseball hall of fame induction for {0} as {1}. {0} has played baseball for {2} years. Provide a detailed case supporting or against {0} to be considered for the Hall of Fame.\r\n",
+                        mlbBatterInfo?.FullPlayerName, mlbBatterInfo?.HallOfFameProbability.ToString("P", CultureInfo.InvariantCulture), mlbBatterInfo?.YearsPlayed,
+                        mlbBatterInfo?.HR, mlbBatterInfo?.TotalPlayerAwards, DateTime.Now.ToString("M/d/yyyy"));
 
-                // Successful response (OK)
-                response.StatusCode = HttpStatusCode.OK;
-                response.WriteString(openAICompletionResponseGeneratedText + "\r\n\r\n" + footNotes);
+                    // OpenAI - Retrieve Keys
+                    var azureOpenAIKey = System.Environment.GetEnvironmentVariable("AZURE_OPENAI_KEY");
+                    var azureOpenAIDeployment = System.Environment.GetEnvironmentVariable("AZURE_OPENAI_DEPLOYMENT");
+
+                    using var client = new HttpClient();
+                    client.BaseAddress = new Uri(string.Format("https://{0}.openai.azure.com/openai/deployments/text-davinci-003-demo/completions?api-version=2022-12-01", azureOpenAIDeployment));
+                    client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));//ACCEPT header
+                    client.DefaultRequestHeaders.Add("api-key", azureOpenAIKey);
+
+                    // OpenAI - Body
+                    var resultsAndInstructions = webSearchResultsString + promptInstructions;
+                    // OpenAI - Calculate the max tokens
+                    var resultsAndInstructionsLength = resultsAndInstructions.Length;
+                    var resultsAndInstructionsTokensEstimate = resultsAndInstructionsLength / 4;
+                    int maxTokens = Convert.ToInt32(resultsAndInstructionsTokensEstimate * 1.8) > 2000 ? 2000 : Convert.ToInt32(resultsAndInstructionsTokensEstimate * 1.6);
+
+                    // OpenAI - Completions Settings
+                    var openAICompletions = new OpenAICompletions()
+                    {
+                        prompt = resultsAndInstructions,
+                        max_tokens = maxTokens,
+                        temperature = 0.26f,
+                        top_p = 0.84f,
+                        frequency_penalty = 0.12f,
+                        presence_penalty = 0.12f,
+                        stop = string.Empty
+                    };
+                    var openAICompletionsJsonString = JsonSerializer.Serialize(openAICompletions);
+
+                    // OpenAI - Post Request
+                    var openAIRequestBody = new StringContent(openAICompletionsJsonString, Encoding.UTF8, "application/json");
+                    var opeanAIResponse = await client.PostAsync(client.BaseAddress, openAIRequestBody);
+                    var openAICompletionResponseBody = await opeanAIResponse.Content.ReadAsStringAsync();
+                    var openAICompletionResponse = JsonSerializer.Deserialize<OpenAICompletionsResponse>(openAICompletionResponseBody);
+
+                    var openAICompletionResponseGeneratedText = openAICompletionResponse?.choices[0].text.Trim();
+                    var fullNarrativeResponse = openAICompletionResponseGeneratedText + "\r\n\r\n" + footNotes;
+                    _logger.LogInformation("GenerateHallOfFameText - OpenAI Text: " + openAICompletionResponseGeneratedText);
+
+                    // Cache - Add Response To Cache
+                    redisCache.AddNarrative(mlbBatterInfo, fullNarrativeResponse ?? string.Empty);
+
+                    // Successful response (OK)
+                    response.StatusCode = HttpStatusCode.OK;
+                    response.WriteString(fullNarrativeResponse);
+                }   // ENDOF - ELSE PROCESS either BING and/or OPENAI
             }
 
             _logger.LogInformation("GenerateHallOfFameText - End");
