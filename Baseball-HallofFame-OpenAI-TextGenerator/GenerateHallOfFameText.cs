@@ -69,6 +69,8 @@ namespace Baseball_HallofFame_OpenAI_TextGenerator
                     // Itertate over the Bing Web Pages (Cache)
                     foreach (var bingWebPage in webSearchResults)
                     {
+                        bingSearchId++;
+
                         webSearchResultsString += string.Format("[{0}]: \"{1}: {2}\"\r\nURL: {3}\r\n\r\n",
                             bingSearchId, bingWebPage.Name, bingWebPage.Snippet, bingWebPage.Url);
 
