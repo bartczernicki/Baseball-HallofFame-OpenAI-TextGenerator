@@ -83,7 +83,7 @@ namespace Baseball_HallofFame_OpenAI_TextGenerator
                     var footNotes = string.Empty;
                     var bingSearchId = 0;
 
-                    var webSearchResults = redisCache.GetWebSearchResults(mlbBatterInfo, searchString);
+                    var webSearchResults = redisCache.GetWebSearchResults(mLBBatterInfo: mlbBatterInfo, searchString);
 
                     if (webSearchResults.Count > 0)
                     {
