@@ -12,6 +12,9 @@
     <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.Http" Version="3.0.13" />
     <PackageReference Include="Microsoft.Azure.Functions.Worker.Sdk" Version="1.7.0" />
     <PackageReference Include="Microsoft.Bing.Search.WebSearch" Version="1.0.0" />
+    <PackageReference Include="Microsoft.SemanticKernel" Version="0.9.61.1-preview" />
+    <PackageReference Include="Microsoft.SemanticKernel.Skills.Document" Version="0.9.61.1-preview" />
+    <PackageReference Include="Microsoft.SemanticKernel.Skills.Web" Version="0.9.61.1-preview" />
     <PackageReference Include="StackExchange.Redis" Version="2.6.96" />
   </ItemGroup>
   <ItemGroup>
