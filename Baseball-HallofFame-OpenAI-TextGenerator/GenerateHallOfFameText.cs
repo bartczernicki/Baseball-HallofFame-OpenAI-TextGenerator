@@ -33,7 +33,33 @@ namespace Baseball_HallofFame_OpenAI_TextGenerator
             {
                 response.StatusCode = HttpStatusCode.OK;
                 response.Headers.Add("Content-Type", "text/plain; charset=utf-8");
-                response.WriteString("Generate Hall of Fame API is working");
+                var isRedisCacheWorking = false;
+                var isBingSearchWorking = false;
+
+                // 1) - Check Redis
+                // Cache - Initialize Cache (Redis) & Check Cache
+                var redisCache = new Cache.Redis();
+                if (Util.UseRedisCache(redisCache.IsRedisConnected))
+                {
+                    isRedisCacheWorking= true;
+                }
+
+                // 2) - Check Bing
+                var bingSearchKey = System.Environment.GetEnvironmentVariable("BING_SEARCH_KEY");
+                var bingSearchClient = new WebSearchClient(new ApiKeyServiceClientCredentials(bingSearchKey));
+                // check if Bing client is working
+                try
+                {
+                    var bingSearchResult = await bingSearchClient.Web.SearchAsync(query: "test");
+                    isBingSearchWorking= true;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogInformation("GenerateHallOfFameText - Bing Search Error: " + ex.Message);
+                }
+
+
+                response.WriteString(string.Format("Generate Hall of Fame API. Connection: True, Redis Connection: {0}, Bing Connection: {1}", isRedisCacheWorking, isBingSearchWorking));
             }
             else // POST
             {
