@@ -35,6 +35,7 @@ namespace Baseball_HallofFame_OpenAI_TextGenerator
                 response.Headers.Add("Content-Type", "text/plain; charset=utf-8");
                 var isRedisCacheWorking = false;
                 var isBingSearchWorking = false;
+                var isOpenAIWorking = false;
 
                 // 1) - Check Redis
                 // Cache - Initialize Cache (Redis) & Check Cache
@@ -58,8 +59,12 @@ namespace Baseball_HallofFame_OpenAI_TextGenerator
                     _logger.LogInformation("GenerateHallOfFameText - Bing Search Error: " + ex.Message);
                 }
 
+                // 3) - Check OpenAI
+                var openAIKey = System.Environment.GetEnvironmentVariable("OPENAI_KEY");
+                var openAIClient = new OpenAIClient(openAIKey);
+                var openAIResult = await openAIClient.GetCompletion("test");
 
-                response.WriteString(string.Format("Generate Hall of Fame API. Connection: True, Redis Connection: {0}, Bing Connection: {1}", isRedisCacheWorking, isBingSearchWorking));
+                response.WriteString(string.Format("Generate Hall of Fame API. Function Connection: True, Redis Connection: {0}, Bing Connection: {1}", isRedisCacheWorking, isBingSearchWorking));
             }
             else // POST
             {
