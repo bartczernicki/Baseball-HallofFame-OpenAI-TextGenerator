@@ -29,8 +29,10 @@ namespace Baseball_HallofFame_OpenAI_TextGenerator
 
             unchecked
             {
+#pragma warning disable CS8602 // Dereference of a possibly null reference.
                 return sequence.Aggregate(seed, (current, item) =>
                     (current * modifier) + item.GetHashCode());
+#pragma warning restore CS8602 // Dereference of a possibly null reference.
             }
         }
 

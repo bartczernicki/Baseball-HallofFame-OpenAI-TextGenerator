@@ -66,7 +66,8 @@ namespace Baseball_HallofFame_OpenAI_TextGenerator.Cache
                 RedisValue? result = cache?.StringGet(mlbBatterInfoNarrativeKey);
                 var narratives = new List<NarrativeResult>();
 
-                if (!result.Value.IsNullOrEmpty)
+                RedisValue value = result.Value;
+                if (!value.IsNullOrEmpty)
                 {
                     narratives = Newtonsoft.Json.JsonConvert.DeserializeObject<List<NarrativeResult>>(result);
                 }
